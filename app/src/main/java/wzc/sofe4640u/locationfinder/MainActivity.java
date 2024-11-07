@@ -1,5 +1,8 @@
 package wzc.sofe4640u.locationfinder;
 
+import android.content.Intent;
+import android.location.Address;
+import android.location.Geocoder;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -14,10 +17,12 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.util.ArrayList;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-
+    public DatabaseHelper db;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -34,17 +39,14 @@ public class MainActivity extends AppCompatActivity {
 
         RecyclerView searchRecycler = findViewById(R.id.searchRecycler);
         searchRecycler.setLayoutManager(new LinearLayoutManager(this));
-        // TODO: Replace this init
-        ArrayList<String> list = new ArrayList<>();
-        list.add("Something");
-        list.add("Some Other");
-        list.add("Not That");
-        searchRecycler.setAdapter(new SearchRecyclerAdapter(list));
+        db = new DatabaseHelper(getApplicationContext());
+        searchRecycler.setAdapter(new SearchRecyclerAdapter(db.getAllNames()));
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.search_menu, menu);
+        RecyclerView searchRecycler = findViewById(R.id.searchRecycler);
         MenuItem searchLocations = menu.findItem(R.id.searchLocations);
         SearchView searchView = (SearchView) searchLocations.getActionView();
 
@@ -52,12 +54,34 @@ public class MainActivity extends AppCompatActivity {
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
-                return false;
+                if (db.exists(query)) {
+                    double[] coords = db.getCoords(query);
+                    Intent intent = new Intent(MainActivity.this, MapActivity.class);
+                    intent.putExtra("lat", coords[0]);
+                    intent.putExtra("lon", coords[1]);
+                    startActivity(intent);
+                } else if (!query.trim().isBlank()){
+                    Geocoder geocoder = new Geocoder(getApplicationContext());
+                    try {
+                        List<Address> addr = geocoder.getFromLocationName(query, 1);
+                        double lat = addr.get(0).getLatitude();
+                        double lon = addr.get(0).getLongitude();
+                        db.addLoc(query, lat, lon);
+                        Intent intent = new Intent(MainActivity.this, MapActivity.class);
+                        intent.putExtra("lat", lat);
+                        intent.putExtra("lon", lon);
+                        startActivity(intent);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return true;
             }
 
             @Override
-            public boolean onQueryTextChange(String newText) {
-                return false;
+            public boolean onQueryTextChange(String query) {
+                ((SearchRecyclerAdapter) searchRecycler.getAdapter()).updateItems(db.filter(Arrays.asList(query.split("\\s+"))));
+                return true;
             }
         });
         return true;

@@ -30,7 +30,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public List<String> getAllNames() {
         Cursor cursor = this.getReadableDatabase().rawQuery("SELECT `name` FROM `locations`;", null);
         ArrayList<String> resultsList = new ArrayList<>();
-        while (cursor.isAfterLast()) {
+        cursor.moveToFirst();
+        while (!cursor.isAfterLast()) {
             resultsList.add(cursor.getString(0));
             cursor.moveToNext();
         }
@@ -40,18 +41,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public List<String> filter(List<String> names) {
         StringBuilder query = new StringBuilder("SELECT `name` FROM `locations` WHERE");
+        List<String> newnames = new ArrayList<>();
         for (int i = 0; i < names.size(); i++) {
             if (i != 0) {
                 query.append(" AND");
             }
             query.append(" `name` LIKE ?");
             String name = "%" + names.get(i) + "%";
-            names.remove(i);
-            names.add(i, name);
+            newnames.add(i, name);
         }
         query.append(";");
-        Cursor cursor = this.getReadableDatabase().rawQuery(query.toString(), names.toArray(new String[0]));
+        Cursor cursor = this.getReadableDatabase().rawQuery(query.toString(), newnames.toArray(new String[0]));
         ArrayList<String> results =  new ArrayList<>();
+        cursor.moveToFirst();
         while (!cursor.isAfterLast()) {
             results.add(cursor.getString(0));
             cursor.moveToNext();
@@ -65,7 +67,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         vals[0] = name;
         Cursor cursor = this.getReadableDatabase().rawQuery("SELECT `lat`, `lon` FROM `locations` WHERE `name` = ? LIMIT 1;", vals);
         double results[] = {0.0, 0.0};
-        if (cursor.getColumnCount() == 2) {
+        cursor.moveToFirst();
+        if (!cursor.isAfterLast() && cursor.getColumnCount() == 2) {
             results[0] = cursor.getDouble(0);
             results[1] = cursor.getDouble(1);
         }

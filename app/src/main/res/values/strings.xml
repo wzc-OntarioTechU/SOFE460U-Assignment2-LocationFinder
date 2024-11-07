@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Location Finder</string>
     <string name="search_for_location">Search For Location</string>
+    <string name="returnToMain">Return to main menu.</string>
 </resources>
